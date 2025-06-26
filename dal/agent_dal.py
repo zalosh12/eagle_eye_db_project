@@ -1,15 +1,13 @@
 import mysql.connector
+from mysql.connector import Error
 from models.agent import Agent
 
 class AgentDal:
-    def __init__(self,host='localhost',user='root',password="",database='eagleeyedb'):
-        self.conn = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=database
-        )
-        self.cursor = self.conn.cursor(dictionary=True)
+    def __init__(self,connection):
+       self.conn = connection
+       self.cursor = self.conn.cursor(dictionary=True)
+
+
 
     def add_agent(self,agent):
         query = """
@@ -18,10 +16,12 @@ class AgentDal:
         """
         values = (agent.code_name,agent.real_name,agent.location,agent.status,
                   agent.missions_completed)
-
-        self.cursor.execute(query,values)
-        self.conn.commit()
-        print("Agent added successfully")
+        try:
+            self.cursor.execute(query,values)
+            self.conn.commit()
+            print("Agent added successfully")
+        except mysql.connector.Error as err:
+            print(f"Failed to add agent: {err}")
 
     def get_all_agents(self) :
         query = "SELECT * FROM agents"
@@ -36,14 +36,19 @@ class AgentDal:
             missions_completed=row["missionsCompleted"]
         ) for row in result]
 
-
-    def updete_mission_completed(self,agent_id,missions_to_add):
+    def update_missions_completed(self, agent_id, missions_to_add) :
         query = "UPDATE agents SET missionsCompleted = missionsCompleted + %s WHERE id = %s"
-        self.cursor.execute(query(agent_id,missions_to_add))
+        self.cursor.execute(query, (missions_to_add, agent_id))
         self.conn.commit()
+        print("Missions count updated successfully.")
 
     def delete_agent(self, agent_id) :
         self.cursor.execute("DELETE FROM agents WHERE id = %s", (agent_id,))
         self.conn.commit()
+        print("Agent deleted.")
+
+    def close(self) :
+        self.cursor.close()
+        self.conn.close()
 
 
